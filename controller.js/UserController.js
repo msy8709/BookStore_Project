@@ -22,6 +22,7 @@ const join = (req, res) => {
                 console.log(err);
                 return res.status(StatusCodes.BAD_REQUEST).end();
             }
+            console.log(results.password)
             return res.status(StatusCodes.CREATED).json(results)
         }
     )
@@ -41,12 +42,12 @@ const login = (req, res) =>{
             const loginUser = results[0];
 
             //salt값 꺼내서 날 것으로 들어온 비밀번호를 암호화 해보고
-            const hashPassword = crypto.pbkdf2Sync(password, salt, 10000,10,'sha512').toString('base64');
+            const hashPassword = crypto.pbkdf2Sync(password, loginUser.salt, 10000,10,'sha512').toString('base64');
             //db 비밀번호 비교
             if(loginUser && loginUser.password == hashPassword){
                 const token = jwt.sign({
-                    email : loginUser.email,
-
+                    id : loginUser.id,
+                    email : loginUser.email
                 }, process.env.PRIVATE_KEY,{
                     expiresIn : '5m',
                     issuer : "soyeong"
@@ -62,13 +63,12 @@ const login = (req, res) =>{
             else{
                 return res.status(StatusCodes.UNAUTHORIZED).end();
             }
-            return res.status(StatusCodes.CREATED).json(results)
         }
     )
 
 };
 const PasswordResetRequest = (req, res) =>{
-    const {email} = res.body;
+    const {email} = req.body;
 
     let sql = 'SELECT * FROM users WHERE email = ?';
 
@@ -78,7 +78,7 @@ const PasswordResetRequest = (req, res) =>{
                 console.log(err);
                 return res.status(StatusCodes.BAD_REQUEST).end();
             }
-            const user = result[0];
+            const user = results[0];
             if (user){
                 return res.status(StatusCodes.OK).json({
                     email : email
@@ -96,7 +96,7 @@ const PasswordReset = (req, res) =>{
 
     const salt = crypto.randomBytes(10).toString('base64');
     const hashPassword = crypto.pbkdf2Sync(password, salt, 10000,10,'sha512').toString('base64');
-    let values = [password,email, salt]
+    let values = [hashPassword,email, salt]
 
     conn.query(sql, values,
         (err,results) => {
